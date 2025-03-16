@@ -1,3 +1,5 @@
+//THIS IS A COMMENT BY PHILIP SHERMAN 3/16/2025
+
 const int led1 = 8;  // LED 1 connected to Pin 8
 const int led2 = 7;  // LED 2 connected to Pin 7
 const int led3 = 6;  // LED 3 connected to Pin 6
