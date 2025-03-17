@@ -16,17 +16,17 @@ void loop() {
   if (digitalRead(button) == HIGH) {  // press
     // Turn on the LEDs in sequence
     digitalWrite(led1, HIGH);  // LED for pin 8
-    delay(1000);  // Wait for 1000ms
+    delay(500);  // Wait for 500ms
     digitalWrite(led1, LOW); //turn off led
     delay(500);  // Wait for 500ms
     
     digitalWrite(led2, HIGH);  // LED for pin 7
-    delay(1000);  // Wait for 1000ms
+    delay(500);  // Wait for 500ms
     digitalWrite(led2, LOW);   // tur off led
     delay(500);  // Wait for 500ms
     
     digitalWrite(led3, HIGH);  // LED for pin 9
-    delay(1000);  // Wait for 1000ms
+    delay(500);  // Wait for 500ms
     digitalWrite(led3, LOW);   // turn off led
     delay(500);  // Wait for 500ms
   } else {
