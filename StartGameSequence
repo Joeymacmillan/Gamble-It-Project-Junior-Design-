@@ -1,0 +1,120 @@
+//Start Game Code
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 //OLED Display Width
+#define SCREEN_HEIGHT 64 //OLED Display Height
+
+//Declaration for SSD1306 display using I2C
+#define OLED_RESET -1 //Reset pin #
+#define SCREEN_ADDRESS 0x3C
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+//Setting Pins
+const int power = 10; //Input pin for the switch
+const int led = 8; //Output pin for LED
+const int sensor = 5; //Input pin for the sensor
+const int button = 9; //Input pin for the button
+
+//Variables
+int switch_state = 0; //Current switch state
+bool ledON = false; //Tracking if LED is activated by slide switch
+bool objectDetected = false; //Tracking if IR sensor detects object
+bool buttonReady = false; //Tracking if object has been detected and button can be pushed
+
+void setup()
+{
+  //Initializing OLED object
+  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
+  {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); //Loops forever
+  }
+
+  pinMode(power, INPUT); //Initializing the slide switch as Input
+  pinMode(led, OUTPUT); //Initializing the LED as Output
+  pinMode(sensor, INPUT); //Initializing IR sensor as Input
+  pinMode(button, INPUT);
+  digitalWrite(led,LOW); //Making Sure LED starts OFF
+
+  //Clear the buffer
+  display.clearDisplay();
+  display.display();
+}
+
+void loop()
+{
+  //Read current state of slide switch
+  int switchReading = digitalRead(power);
+
+  //Reading IR Sensor value
+  int IRSensorReading = digitalRead(sensor);
+  objectDetected = (IRSensorReading == LOW);
+
+  //Reading Button value
+  int button_state = digitalRead(button);
+
+  //Checking switch status
+  if(switchReading == LOW)
+  {
+    digitalWrite(led,LOW);
+    ledON = false;
+    buttonReady = false;
+    display.clearDisplay();
+    display.display();
+  }
+
+  //Turns on LED if slide switch is in the ON postition
+  if(switchReading != switch_state)
+  {
+    switch_state = switchReading;
+
+    //Only turn on LED if slide switch is ON
+    if(switch_state == HIGH && !ledON)
+    {
+      blinkLED();
+      ledON = true;
+
+      //Display Welcome
+      display.setTextSize(1);
+      display.setTextColor(WHITE);
+      display.setCursor(0,28);
+      display.println("Welcome Insert Coin");
+      display.display();
+      delay(2000);
+      display.clearDisplay();
+    }
+    else if(switch_state == LOW)
+    {
+      ledON = false;
+    }
+  }
+
+  //Checking if object is detected by IR Sensor and switch is ON
+  if(objectDetected && ledON)
+  {
+    blinkLED();
+    buttonReady = true;
+  }
+
+  //Checks Button state and if pressed then Display is turned on
+  if(buttonReady == true && button_state == HIGH)
+  {
+    //Display Score
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0,28);
+    display.println("0/99");
+    display.display();
+    display.clearDisplay();
+  }
+}
+
+void blinkLED()
+{
+  digitalWrite(led,HIGH);
+  delay(1000);
+  digitalWrite(led,LOW);
+}
