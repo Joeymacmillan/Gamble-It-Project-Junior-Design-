@@ -1,0 +1,99 @@
+//Start Game Code
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 //OLED Display Width
+#define SCREEN_HEIGHT 64 //OLED Display Height
+
+//Declaration for SSD1306 display using I2C
+#define OLED_RESET -1 //Reset pin #
+#define SCREEN_ADDRESS 0x3C
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+//Setting Pins
+const int led = 8; //Output pin for LED
+const int touch = 7; //Input pin for Touch Sensor
+
+//Variables
+
+
+void setup()
+{
+  //Initializing OLED object
+  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
+  {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); //Loops forever
+  }
+
+  pinMode(led, OUTPUT); //Initializing the LED as Output
+  pinMode(touch, INPUT); //Initializing the touch sensor as input
+  digitalWrite(led,LOW); //Making Sure LED starts OFF
+
+  //Clear the buffer for display
+  display.clearDisplay();
+  display.display();
+  delay(2000);
+}
+
+void loop()
+{
+  //Display BlackJack hand
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+
+  display.setCursor(0,0);
+  display.println("Player: ");
+  display.setCursor(90,0);
+  display.println("(17)");
+  display.setCursor(0,10);
+  display.println("9H8D");
+
+  display.setCursor(0,20);
+  display.println("Dealer: ");
+  display.setCursor(90,20);
+  display.println("(19)");
+  display.setCursor(0,30);
+  display.println("QH9H");
+
+  display.display();
+  display.clearDisplay();
+
+  if(digitalRead(touch) == HIGH)
+  {
+    digitalWrite(led,HIGH);
+    
+    //Hit and display new cards
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    
+    display.setCursor(0,0);
+    display.println("Player: ");
+    display.setCursor(90,0);
+    display.println("(21)");
+    display.setCursor(0,10);
+    display.println("9H8D4C");
+    
+    display.setCursor(0,20);
+    display.println("Dealer: ");
+    display.setCursor(90,20);
+    display.println("(19)");
+    display.setCursor(0,30);
+    display.println("QH9H");
+
+    display.setCursor(0,40);
+    display.println("BLACKJACK!");
+    display.setCursor(0,50);
+    display.println("PLAYER WINS!");
+
+    display.display();
+    display.clearDisplay();
+    delay(2000);
+  }
+  else
+  {
+    digitalWrite(led,LOW);
+  }
+}
