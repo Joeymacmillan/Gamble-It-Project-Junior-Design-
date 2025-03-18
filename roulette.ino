@@ -44,9 +44,6 @@ void setup() {
   turnOffAllLEDs();
   
   // Start the game
-  Serial.println("=== CLAP REACTION GAME ===");
-  Serial.println("Clap when you hear the buzzer!");
-  
   // Play startup sound
   playStartupSound();
   delay(1000);
