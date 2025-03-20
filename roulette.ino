@@ -96,13 +96,10 @@ void loop() {
       
       // Check for clap
       if (soundLevel > SOUND_THRESHOLD) {
-        // Clap detected!
-        Serial.print("Clap detected Level: ");
-        Serial.println(soundLevel);
-        
-        // Score a point
+        // Clap detected
+        // increment score by a point
         userScore++;
-        Serial.print("Correct Score: ");
+        Serial.print("Score: ");
         Serial.println(userScore);
         
         // Run the LED sequence as reward
@@ -133,10 +130,7 @@ void issueNewCommand() {
   // Start timing
   lastCommandTime = millis();
   waitingForResponse = true;
-  
-  Serial.print("New command! Time limit: ");
-  Serial.print(timeLimit);
-  Serial.println("ms");
+
 }
 
 // Function to play the LED sequence
