@@ -1,13 +1,36 @@
--------------------USED PINS----------------
+-------------------USED PINS---------------- 
+--Digital Pins--
+11/14
+
+--Analog Pins--
+3/6
+
 ---Roulette wheel
-Digitial Pin 5
-Digitial Pin 6
-Digitial Pin 7
-Digitial Pin 8
+Digital Pin 5
+Digital Pin 6
+Digital Pin 7
+Digital Pin 8
 Digital Pin 2
 Analog Pin 0
+
 ---Speaker----
 Digital Pin 3
 
-A4,5 
-Digital pin 2
+--TouchPad Sensor--
+Digital Pin 11
+
+--IR Sensor--
+Digital Pin 4
+
+--OLED BlackJack/Slots--
+Analog Pin 4
+Analog Pin 5
+
+--Power Switch(on/off)--
+Digital Pin 9
+
+--Start Game Button--
+Digital Pin 10
+
+--Button for Slots--
+Digital Pin 1
