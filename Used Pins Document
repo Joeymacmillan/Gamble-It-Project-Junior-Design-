@@ -33,3 +33,6 @@ Digital Pin 11
 --OLED BlackJack/Slots--
 Analog Pin 4
 Analog Pin 5
+
+--LED--
+Digital Pin 12
