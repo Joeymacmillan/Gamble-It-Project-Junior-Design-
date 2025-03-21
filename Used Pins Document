@@ -1,6 +1,6 @@
 -------------------USED PINS---------------- 
 --Digital Pins--
-11/14
+11/12(Excluding Digital Pins 0 and 1)
 
 --Analog Pins--
 3/6
