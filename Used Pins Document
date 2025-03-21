@@ -13,23 +13,23 @@ Digital Pin 8
 Analog Pin 0
 
 ---Speaker----
-Digital Pin 0
+Digital Pin 2
 
 --TouchPad Sensor--
 Digital Pin 11
 
 --IR Sensor--
-Digital Pin 3
+Digital Pin 9
 
 --OLED BlackJack/Slots--
 Analog Pin 4
 Analog Pin 5
 
 --Power Switch(on/off)--
-Digital Pin 1
+Digital Pin 3
 
 --Start Game Button--
-Digital Pin 2
+Digital Pin 4
 
 --Button for Slots--
-Digital Pin 1
+Digital Pin 10
