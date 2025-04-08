@@ -9,7 +9,21 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 #define BUTTON_PIN 2
 
-char symbols[] = {'$', '#', '@'};
+const char symbolSets[10][3] = {
+  {'$', '#', '@'},
+  {'$', '$', '$'}, // winning value
+  {'#', '@', '%'},
+  {'%', '#', '@'},
+  {'%', '%', '@'},
+  {'#', '@', '%'},
+  {'$', '$', '@'},
+  {'@', '!', '$'},
+  {'#', '@', '$'},
+  {'*', '^', '@'},
+
+}
+
+char symbols[3] = {' ', ' ', ' '};
 char slots[3] = {' ', ' ', ' '};
 bool spinning = false;
 
@@ -40,7 +54,7 @@ void showStartMenu() {
     display.setCursor(20, 20);
     display.print("Press to");
     display.setCursor(30, 40);
-    display.print("Start");
+    display.print("Start!");
     display.display();
 }
 
@@ -48,10 +62,15 @@ void spinSlots() {
     int spinTime = 2000; // Total spin duration in milliseconds
     int delayTime = 50;  // Initial speed
 
+    int setIndex = random(0,5);
+    for (int i=0; i < 3; i++) {
+      currentSymbols[i] = symbolSets[setIndex][i];
+    }
+
     unsigned long startTime = millis();
     while (millis() - startTime < spinTime) {
         for (int i = 0; i < 3; i++) {
-            slots[i] = symbols[random(0, 3)];
+            slots[i] = currentSymbols[random(0, 3)];
         }
         drawSlots();
         delay(delayTime);
@@ -85,7 +104,7 @@ void drawSlots() {
 void checkWin() {
     if (slots[0] == '$' && slots[1] == '$' && slots[2] == '$') {
         display.setCursor(30, 40);
-        display.print("YOU WIN!");
+        display.print("WIN!");
         display.display();
     }
 }
