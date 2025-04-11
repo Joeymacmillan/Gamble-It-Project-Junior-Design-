@@ -1,30 +1,636 @@
-if (!gameActive && !gameOver) {
-  // Read the button state
-  int currentButtonState = digitalRead(button);
+/*
+ * Multi-command Reaction Game
+ * - Randomly assigns commands (clap, touch, or press button)
+ * - Shows different animations as rewards
+ * - Keeps score out of 99
+ * - Simplified animations for each reward
+ * - Uses button (pin 4) to restart instead of clap
+ */
+
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width
+#define SCREEN_HEIGHT 64 // OLED display height
+
+// Declaration for SSD1306 display connected using I2C
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Pin definitions
+const int analogPin = A0;   // KY-037 Analog Output for sound detection
+const int ledPin1 = 8;      // Sequence LEDs
+const int ledPin2 = 7;
+const int ledPin3 = 6;
+const int ledPin4 = 5;
+const int touchPin = 11;    // Touch sensor input
+const int buttonPin = 2;    // Push button input
+const int buzzerPin = 13;   // Buzzer/speaker for audio commands
+const int sensor = 9;       // IR sensor input
+const int button = 4;       // Button input for restart
+bool objectDetected = false; // Tracking if IR sensor detects object
+
+// Fixed threshold for sound detection
+const int SOUND_THRESHOLD = 540; 
+
+// Game variables
+int userScore = 0;
+const int MAX_SCORE = 99;   // Maximum score to win the game
+unsigned long timeLimit = 10000;        // Initial time limit (10 seconds)
+unsigned long lastCommandTime = 0;      // When the last command was issued
+unsigned long lastSoundCheckTime = 0;   // To avoid checking too often
+bool waitingForResponse = false;
+bool gameActive = false;
+bool gameOver = false;                  // Flag to track game over state
+int currentCommand = 0;                 // 0 = clap, 1 = touch, 2 = button
+bool coinInserted = false;              // Track if IR sensor has been triggered
+int lastButtonState = LOW;             // Track previous button state
+
+// Function prototypes
+void turnOffAllLEDs();
+void playCommandSound();
+void playFailSound();
+void playSuccessSound();
+void playStartupSound();
+void issueNewCommand();
+void displaySlotMachine();
+void displayBlackjack();
+void displayGameOver(bool isWin);
+void displayStartScreen();
+void runSimpleLEDRoulette();
+
+void setup() {
+  pinMode(analogPin, INPUT);
+  pinMode(ledPin1, OUTPUT);
+  pinMode(ledPin2, OUTPUT);
+  pinMode(ledPin3, OUTPUT);
+  pinMode(ledPin4, OUTPUT);
+  pinMode(touchPin, INPUT);
+  pinMode(buttonPin, INPUT_PULLUP); // Using internal pull-up resistor
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(sensor, INPUT);           // IR sensor input
+  pinMode(button, INPUT_PULLUP);    // Restart button with pull-up
+  Serial.begin(9600);
   
-  // Check for button press (transition from HIGH to LOW with pullup)
-  if (lastButtonState == HIGH && currentButtonState == LOW) {
-    gameActive = true;
-    
-    // Show ready screen
-    display.clearDisplay();
-    display.setTextSize(2);
-    display.setTextColor(WHITE);
-    display.setCursor(20, 20);
-    display.println("Ready?");
-    display.display();
-    
-    // Feedback beep
-    playTone(880, 200);
-    
-    // Pause before first command
-    delay(1000);
-    
-    // First command of new game
-    issueNewCommand();
+  // Initialize the OLED display
+  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
   }
   
-  // Update last button state
-  lastButtonState = currentButtonState;
-  return; // Skip rest of loop until game is active
+  // Make sure all LEDs are off at start
+  turnOffAllLEDs();
+  
+  // Clear the buffer and display start screen
+  display.clearDisplay();
+  displayStartScreen();
+  
+  // Start the game
+  playStartupSound();
+  delay(2000);  // Allow time to read the start screen
+  
+  // Issue first command
+  //issueNewCommand();
+}
+
+void loop() {
+  if (!gameActive && !gameOver) {
+    // First check if coin has been inserted
+    if (!coinInserted) {
+      // Check IR sensor
+      int irSensorReading = digitalRead(sensor);
+      
+      if (irSensorReading == LOW) {  // Adjust based on your sensor (LOW or HIGH for detection)
+        coinInserted = true;
+      }
+    }
+    // If coin already inserted, check for button press
+    else {
+      // Read the button state
+      int currentButtonState = digitalRead(button);
+      
+      // Check for button press (transition from LOW to HIGH for better reliability)
+      if (lastButtonState == LOW && currentButtonState == HIGH) {
+        gameActive = true;
+        // Pause before first command
+        delay(1000);
+        
+        // First command of new game
+        issueNewCommand();
+      }
+      
+      // Update last button state
+      lastButtonState = currentButtonState;
+    }
+    return; // Skip rest of loop until game is active
+  }
+  // Read sound level every 20ms
+  if (millis() - lastSoundCheckTime > 20) {
+    int soundLevel = analogRead(analogPin);
+    lastSoundCheckTime = millis();
+    
+    // For debugging
+    Serial.print("Sound level: ");
+    Serial.println(soundLevel);
+    
+    // Check if the game is over and waiting for a restart
+    if (gameOver) {
+      // First check if coin has been inserted
+      if (!coinInserted) {
+        // Check IR sensor
+        int irSensorReading = digitalRead(sensor);
+        if (irSensorReading == LOW) {  // Adjust based on your sensor (LOW or HIGH for detection)
+          coinInserted = true;
+        }
+      }
+      
+      // If coin already inserted, check for button press instead of clap
+      else {
+        // Read the restart button state
+        int currentButtonState = digitalRead(button);
+        
+        // Check for button press (transition from HIGH to LOW with pullup)
+        if (lastButtonState == HIGH && currentButtonState == LOW) {
+          gameOver = false;
+          coinInserted = false;  // Reset for next time
+          userScore = 0;
+          timeLimit = 10000;
+          
+          //pause before first command
+          delay(1000);
+          
+          // first command of new game
+          issueNewCommand();
+        }
+        
+        // Update last button state
+        lastButtonState = currentButtonState;
+      }
+    }
+    // Check for response when waiting
+    else if (waitingForResponse) {
+      // Check if time limit has expired
+      if (millis() - lastCommandTime > timeLimit) {
+        // time up, user failed
+        playFailSound();
+        Serial.print("Final score: ");
+        Serial.println(userScore);
+        
+        // Show game over on OLED with failure reason
+        displayGameOver(false);
+        
+        //game over state
+        gameOver = true;
+        waitingForResponse = false;
+        
+        // Turn off all LEDs
+        turnOffAllLEDs();
+        
+        delay(1000);
+      }
+      
+      // Check for the correct response based on the current command
+      bool correctResponse = false;
+      
+      switch(currentCommand) {
+        case 0: // Clap command
+          if (soundLevel > SOUND_THRESHOLD) {
+            correctResponse = true;
+          }
+          else if ((digitalRead(touchPin) == HIGH) || (digitalRead(buttonPin) == LOW)) {
+            // Wrong input for clap command - player touched or pressed button
+            playFailSound();
+            displayGameOver(false);
+            gameOver = true;
+            waitingForResponse = false;
+            turnOffAllLEDs();
+          }
+          break;
+          
+        case 1: // Touch command
+          if (digitalRead(touchPin) == HIGH) {
+            correctResponse = true;
+          }
+          else if ((soundLevel > SOUND_THRESHOLD) || (digitalRead(buttonPin) == LOW)) {
+            // Wrong input for touch command
+            playFailSound();
+            displayGameOver(false);
+            gameOver = true;
+            waitingForResponse = false;
+            turnOffAllLEDs();
+          }
+          break;
+          
+        case 2: // Button command
+          if (digitalRead(buttonPin) == LOW) { // LOW because of pull-up
+            correctResponse = true;
+          }
+          else if ((digitalRead(touchPin) == HIGH) || (soundLevel > SOUND_THRESHOLD)) {
+            // Wrong input for button command
+            playFailSound();
+            displayGameOver(false);
+            gameOver = true;
+            waitingForResponse = false;
+            turnOffAllLEDs();
+          }
+          break;
+      }
+      
+      // If the correct response was given
+      if (correctResponse) {
+        // Successful response
+        userScore++;
+        Serial.print("Score: ");
+        Serial.println(userScore);
+        
+        // Check if the player has reached the maximum score
+        if (userScore >= MAX_SCORE) {
+          // Player won the game!
+          playSuccessSound();
+          displayGameOver(true);
+          gameOver = true;
+          waitingForResponse = false;
+          turnOffAllLEDs();
+          delay(1000);
+          return;
+        }
+        
+        // Show appropriate animation based on the command completed
+        switch(currentCommand) {
+          case 0: // After successful clap - Just do LED roulette once
+            runSimpleLEDRoulette();
+            break;
+            
+          case 1: // After successful touch - Just show blackjack on OLED
+            displayBlackjack();
+            break;
+            
+          case 2: // After successful button press - Just show slot machine on OLED
+            displaySlotMachine();
+            break;
+        }
+        
+        // Reduce time limit very slowly (100ms reduction per successful attempt)
+        // And don't go below 3000ms (3 seconds)
+        timeLimit = max(3000, timeLimit - 100);
+        
+        // Wait a bit before next command
+        delay(1000);
+        
+        // Issue new command
+        issueNewCommand();
+      }
+    }
+  }
+}
+
+// Function to issue a new command
+void issueNewCommand() {
+  // Reset for new command
+  waitingForResponse = false;
+  turnOffAllLEDs();
+  
+  // Choose a random command (0 = clap, 1 = touch, 2 = button)
+  currentCommand = random(0, 3);
+  
+  // Play the command sound
+  playCommandSound();
+  
+  // Display the appropriate command
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  
+  // Show current score at top
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.print("Score: ");
+  display.print(userScore);
+  display.print("/");
+  display.print(MAX_SCORE);
+  
+  // Show command
+  display.setTextSize(2);
+  
+  switch(currentCommand) {
+    case 0:
+      display.setCursor(10, 20);
+      display.println("Clap Now!");
+      break;
+      
+    case 1:
+      display.setCursor(5, 20);
+      display.println("Touch Now!");
+      break;
+      
+    case 2:
+      display.setCursor(5, 20);
+      display.println("Press Now!");
+      break;
+  }
+  
+  display.display();
+  
+  // Start timing
+  lastCommandTime = millis();
+  waitingForResponse = true;
+}
+
+// Simplified LED roulette - just one spin
+void runSimpleLEDRoulette() {
+  // Just one simple LED spin
+  digitalWrite(ledPin1, HIGH);
+  delay(100);
+  digitalWrite(ledPin1, LOW);
+  delay(100);
+  
+  digitalWrite(ledPin2, HIGH);
+  delay(100);
+  digitalWrite(ledPin2, LOW);
+  delay(100);
+  
+  digitalWrite(ledPin3, HIGH);
+  delay(100);
+  digitalWrite(ledPin3, LOW);
+  delay(100);
+  
+  digitalWrite(ledPin4, HIGH);
+  delay(100);
+  digitalWrite(ledPin4, LOW);
+  delay(100);
+}
+
+// Function to turn off all LEDs
+void turnOffAllLEDs() {
+  digitalWrite(ledPin1, LOW);
+  digitalWrite(ledPin2, LOW);
+  digitalWrite(ledPin3, LOW);
+  digitalWrite(ledPin4, LOW);
+}
+
+// Play a tone on the buzzer
+void playTone(int frequency, int duration) {
+  tone(buzzerPin, frequency, duration);
+}
+
+// Function to play a command sound
+void playCommandSound() {
+  switch(currentCommand) {
+    case 0: // Clap command sound - two longer high-pitched beeps
+      tone(buzzerPin, 2000, 200);  // First beep - longer
+      delay(250);
+      tone(buzzerPin, 2000, 200);  // Second beep - longer
+      delay(250);
+      break;
+      
+    case 1: // Touch command sound - ascending scale
+      tone(buzzerPin, 523, 150); // C5
+      delay(150);
+      tone(buzzerPin, 659, 150); // E5
+      delay(150);
+      tone(buzzerPin, 784, 150); // G5
+      delay(150);
+      break;
+      
+    case 2: // Button command sound - slot machine lever pull and spin
+      // Lever pull sound
+      tone(buzzerPin, 800, 100);
+      delay(120);
+      tone(buzzerPin, 600, 80);
+      delay(100);
+      // Start of spin - increasing pitch
+      tone(buzzerPin, 300, 80);
+      delay(90);
+      tone(buzzerPin, 400, 60);
+      delay(70);
+      tone(buzzerPin, 500, 50);
+      delay(60);
+      break;
+  }
+  noTone(buzzerPin);
+}
+
+// Function to play a failure sound
+void playFailSound() {
+  tone(buzzerPin, 392, 200);
+  delay(200);
+  noTone(buzzerPin);
+  tone(buzzerPin, 311, 400);
+  delay(400);
+  noTone(buzzerPin);
+}
+
+// Function to play a success sound for winning the game
+void playSuccessSound() {
+  // Play a fanfare
+  tone(buzzerPin, 523, 150);  // C5
+  delay(150);
+  tone(buzzerPin, 659, 150);  // E5
+  delay(150);
+  tone(buzzerPin, 784, 150);  // G5
+  delay(150);
+  tone(buzzerPin, 1047, 350); // C6
+  delay(350);
+  noTone(buzzerPin);
+}
+
+// Function to play startup sound
+void playStartupSound() {
+  tone(buzzerPin, 440, 200);
+  delay(200);
+  noTone(buzzerPin);
+  tone(buzzerPin, 587, 200);
+  delay(200);
+  noTone(buzzerPin);
+  tone(buzzerPin, 880, 400);
+  delay(400);
+  noTone(buzzerPin);
+}
+
+// Function to display start screen
+void displayStartScreen() {
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(10, 0);
+  display.println("Gamble It");
+  display.setTextSize(1);
+  display.setCursor(5, 20);
+  display.println("Bop It Themed Game");
+  display.setCursor(5, 35);
+  display.println("- Casino Themed Games");
+  display.setCursor(5, 45);
+  display.println("- Insert Coin");
+  display.setCursor(5, 55);
+  display.println("- Press Start Button");
+  display.display();
+}
+
+// Function to display slot machine animation (20% chance of winning)
+void displaySlotMachine() {
+  // Slot machine animation - OLED only, no LED animations
+  for (int i = 0; i < 5; i++) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    
+    // Show score
+    display.setCursor(0, 0);
+    display.print("Score: ");
+    display.print(userScore);
+    display.print("/");
+    display.print(MAX_SCORE);
+    // Draw slot machine reels
+    display.drawRect(20, 20, 25, 30, WHITE);
+    display.drawRect(55, 20, 25, 30, WHITE);
+    display.drawRect(90, 20, 25, 30, WHITE);
+    
+    // Draw random symbols
+    display.setTextSize(2);
+    display.setCursor(27, 25);
+    display.print(random(1, 10));
+    display.setCursor(62, 25);
+    display.print(random(1, 10));
+    display.setCursor(97, 25);
+    display.print(random(1, 10));
+    
+    display.display();
+    delay(200);
+  }
+  
+  // Determine if it's a win (20% chance)
+  bool isWinner = (random(1, 101) <= 20);  // 20% chance
+  
+  // Final result
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(15, 5);
+  display.println("SLOT MACHINE");
+  
+  // Show score
+  display.setCursor(0, 0);
+  display.print("Score: ");
+  display.print(userScore);
+  display.print("/");
+  display.print(MAX_SCORE);
+  
+  // Draw slot machine reels
+  display.drawRect(20, 20, 25, 30, WHITE);
+  display.drawRect(55, 20, 25, 30, WHITE);
+  display.drawRect(90, 20, 25, 30, WHITE);
+  
+  if (isWinner) {
+    // Show 777 for winner
+    display.setTextSize(2);
+    display.setCursor(27, 25);
+    display.print("7");
+    display.setCursor(62, 25);
+    display.print("7");
+    display.setCursor(97, 25);
+    display.print("7");
+    
+  userScore += 50;
+    // Make sure score doesn't exceed ma
+    display.setTextSize(1);
+    display.setCursor(35, 55);
+    display.println("WINNER! +50 points");
+    
+    // Play winning tone sequence
+    playTone(880, 100);
+    delay(100);
+    playTone(1175, 100);
+    delay(100);
+    playTone(1760, 300);
+  } else {
+    // Show random non-matching numbers
+    int num1, num2, num3;
+    do {
+      num1 = random(1, 8);  // Avoid using 7 for all three
+      num2 = random(1, 8);
+      num3 = random(1, 8);
+    } while (num1 == num2 && num2 == num3);  // Make sure they're not all the same
+    
+    display.setTextSize(2);
+    display.setCursor(27, 25);
+    display.print(num1);
+    display.setCursor(62, 25);
+    display.print(num2);
+    display.setCursor(97, 25);
+    display.print(num3);
+    
+    display.setTextSize(1);
+    display.setCursor(35, 55);
+    display.println("TRY AGAIN!");
+    
+    // Play losing tone
+    playTone(440, 300);
+  }
+  
+  display.display();
+  delay(1500);
+}
+
+// Function to display blackjack screen - OLED only, no LED animations
+void displayBlackjack() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  
+  // Show score
+  display.setCursor(0, 0);
+  display.print("Score: ");
+  display.print(userScore);
+  display.print("/");
+  display.print(MAX_SCORE);
+  
+  display.setCursor(0, 15);
+  display.println("Player: 21");
+  
+  display.setCursor(0, 25);
+  display.println("Dealer: 19");
+  
+  // Center the BLACKJACK text
+  display.setTextSize(2);
+  display.setCursor(5, 40);  // Adjusted position
+  display.println("BLACKJACK!");
+  
+  display.display();
+  delay(1500);
+}
+
+// Function to display game over screen
+void displayGameOver(bool isWin) {
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  
+  if (isWin) {
+    display.setCursor(20, 5);
+    display.println("YOU WIN!");
+  } else {
+    display.setCursor(10, 5);
+    display.println("GAME OVER");
+  }
+  
+  display.setTextSize(1);
+  display.setCursor(15, 30);
+  display.print("Final Score: ");
+  display.print(userScore);
+  display.print("/");
+  display.println(MAX_SCORE);
+  
+  display.setCursor(5, 45);
+  display.println("Insert coin, then");
+  display.setCursor(5, 55);
+  display.println("press button to play again");
+  display.display();
+  
+  // Make sure coinInserted is reset to false when game ends
+  coinInserted = false;
+  //lastButtonState = digitalRead(button);
+  // This ensures IR sensor is needed every time
 }
