@@ -1,11 +1,3 @@
-/*
- * Multi-command Reaction Game
- * - Randomly assigns commands (clap, touch, or press button)
- * - Shows different animations as rewards
- * - Keeps score out of 99
- * - Simplified animations for each reward
- * - Uses button (pin 4) to restart instead of clap
- */
 
 #include <SPI.h>
 #include <Wire.h>
@@ -92,8 +84,6 @@ void setup() {
   playStartupSound();
   delay(2000);  // Allow time to read the start screen
   
-  // Issue first command
-  //issueNewCommand();
 }
 
 void loop() {
@@ -103,7 +93,7 @@ void loop() {
       // Check IR sensor
       int irSensorReading = digitalRead(sensor);
       
-      if (irSensorReading == LOW) {  // Adjust based on your sensor (LOW or HIGH for detection)
+      if (irSensorReading == LOW) {  
         coinInserted = true;
       }
     }
@@ -142,7 +132,7 @@ void loop() {
       if (!coinInserted) {
         // Check IR sensor
         int irSensorReading = digitalRead(sensor);
-        if (irSensorReading == LOW) {  // Adjust based on your sensor (LOW or HIGH for detection)
+        if (irSensorReading == LOW) {  // Adjust based on your sensor 
           coinInserted = true;
         }
       }
@@ -274,7 +264,6 @@ void loop() {
         }
         
         // Reduce time limit very slowly (100ms reduction per successful attempt)
-        // And don't go below 3000ms (3 seconds)
         timeLimit = max(3000, timeLimit - 100);
         
         // Wait a bit before next command
@@ -379,14 +368,14 @@ void playTone(int frequency, int duration) {
 // Function to play a command sound
 void playCommandSound() {
   switch(currentCommand) {
-    case 0: // Clap command sound - two longer high-pitched beeps
-      tone(buzzerPin, 2000, 200);  // First beep - longer
+    case 0:
+      tone(buzzerPin, 2000, 200);  
       delay(250);
-      tone(buzzerPin, 2000, 200);  // Second beep - longer
+      tone(buzzerPin, 2000, 200);  
       delay(250);
       break;
       
-    case 1: // Touch command sound - ascending scale
+    case 1: // Touch command sound
       tone(buzzerPin, 523, 150); // C5
       delay(150);
       tone(buzzerPin, 659, 150); // E5
@@ -395,7 +384,7 @@ void playCommandSound() {
       delay(150);
       break;
       
-    case 2: // Button command sound - slot machine lever pull and spin
+    case 2: // Button command sound
       // Lever pull sound
       tone(buzzerPin, 800, 100);
       delay(120);
@@ -469,9 +458,9 @@ void displayStartScreen() {
   display.display();
 }
 
-// Function to display slot machine animation (20% chance of winning)
+// Function to display slot machine animation 20% chance of winning
 void displaySlotMachine() {
-  // Slot machine animation - OLED only, no LED animations
+  // Slot machine animation
   for (int i = 0; i < 5; i++) {
     display.clearDisplay();
     display.setTextSize(1);
@@ -501,7 +490,7 @@ void displaySlotMachine() {
     delay(200);
   }
   
-  // Determine if it's a win (20% chance)
+  // Determine if it's a win 20% chance
   bool isWinner = (random(1, 101) <= 20);  // 20% chance
   
   // Final result
@@ -546,13 +535,13 @@ void displaySlotMachine() {
     delay(100);
     playTone(1760, 300);
   } else {
-    // Show random non-matching numbers
+   
     int num1, num2, num3;
     do {
-      num1 = random(1, 8);  // Avoid using 7 for all three
+      num1 = random(1, 8); 
       num2 = random(1, 8);
       num3 = random(1, 8);
-    } while (num1 == num2 && num2 == num3);  // Make sure they're not all the same
+    } while (num1 == num2 && num2 == num3); 
     
     display.setTextSize(2);
     display.setCursor(27, 25);
@@ -574,7 +563,7 @@ void displaySlotMachine() {
   delay(1500);
 }
 
-// Function to display blackjack screen - OLED only, no LED animations
+// Function to display blackjack screen
 void displayBlackjack() {
   display.clearDisplay();
   display.setTextSize(1);
@@ -593,9 +582,8 @@ void displayBlackjack() {
   display.setCursor(0, 25);
   display.println("Dealer: 19");
   
-  // Center the BLACKJACK text
   display.setTextSize(2);
-  display.setCursor(5, 40);  // Adjusted position
+  display.setCursor(5, 40); 
   display.println("BLACKJACK!");
   
   display.display();
